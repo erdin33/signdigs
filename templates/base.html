@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DigiSign - Digital Signature System{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.3/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-blue-800 text-white shadow-md">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <a href="{{ url_for('index') }}" class="text-xl font-bold">DigiSign</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    {% if session.username %}
+                        <a href="{{ url_for('dashboard') }}" class="hover:text-blue-200">Dashboard</a>
+                        <a href="{{ url_for('sign_pdf') }}" class="hover:text-blue-200">Sign Document</a>
+                        <a href="{{ url_for('verify_pdf') }}" class="hover:text-blue-200">Verify Document</a>
+                        <div class="border-l border-blue-600 h-6 mx-2"></div>
+                        <a href="{{ url_for('logout') }}" class="hover:text-blue-200">Logout</a>
+                    {% else %}
+                        <a href="{{ url_for('verify_pdf') }}" class="hover:text-blue-200">Verify Document</a>
+                        <a href="{{ url_for('login') }}" class="hover:text-blue-200">Login</a>
+                        <a href="{{ url_for('register') }}" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Register</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded 
+                        {% if category == 'error' %}
+                            bg-red-100 text-red-700 border border-red-200
+                        {% elif category == 'success' %}
+                            bg-green-100 text-green-700 border border-green-200
+                        {% else %}
+                            bg-blue-100 text-blue-700 border border-blue-200
+                        {% endif %}"
+                    >
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer class="bg-gray-800 text-white py-6 mt-12">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <p>Digital Signature System &copy; {{ now().year }}</p>
+                <div class="mt-4 md:mt-0">
+                    <a href="#" class="text-blue-300 hover:text-blue-200 mr-4">Privacy Policy</a>
+                    <a href="#" class="text-blue-300 hover:text-blue-200">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
