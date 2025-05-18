@@ -1,53 +1,101 @@
-{% extends "base.html" %}
-{% block title %}Verification Result - DigiSign{% endblock %}
-{% block content %}
-<div class="flex flex-col">
-    <h1 class="text-3xl font-bold text-blue-700 mb-6">Verification Result</h1>
-    
-    <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
-        <div class="p-6">
-            {% if valid %}
-                <div class="flex flex-col items-center text-center py-4">
-                    <div class="bg-green-100 p-6 rounded-full mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+{% extends "base.html" %} {% block title %}Verification Result - DigiSign{% endblock %} {% block content %}
+
+<div class="flex flex-col"> <h1 class="text-3xl font-bold text-blue-700 mb-6">Verification Result</h1>
+<div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+    <div class="p-6">
+        {% if valid %}
+            <div class="flex items-center mb-6">
+                <div class="bg-green-100 p-3 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">Verification Successful</h2>
+                    <p class="text-lg text-green-600">{{ result }}</p>
+                </div>
+            </div>
+            
+            <div class="border border-gray-200 rounded-lg p-4 mb-6">
+                <h3 class="text-lg font-medium text-gray-800 mb-3">Signer Information</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Signature by</p>
+                        <p class="text-base font-medium text-gray-800">{{ signer }}</p>
                     </div>
-                    <h2 class="text-2xl font-bold text-green-700 mb-2">Document is Valid!</h2>
-                    <p class="text-gray-700 mb-4">{{ result }}</p>
-                    
-                    <div class="bg-green-50 p-4 rounded-lg w-full max-w-md">
-                        <h3 class="font-semibold text-green-800 mb-2">Signer Information</h3>
-                        <p><span class="font-medium">Signed by:</span> {{ signer }}</p>
+                    <div>
+                        <p class="text-sm text-gray-500">Institution</p>
+                        <p class="text-base font-medium text-gray-800">{{ institution }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Verification Date</p>
+                        <p class="text-base font-medium text-gray-800">{{ now().strftime('%Y-%m-%d %H:%M:%S') }} UTC</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Signature Methods</p>
+                        <p class="text-base font-medium text-gray-800">{{ sign_date }}</p>
                     </div>
                 </div>
-            {% else %}
-                <div class="flex flex-col items-center text-center py-4">
-                    <div class="bg-red-100 p-6 rounded-full mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <h2 class="text-2xl font-bold text-red-700 mb-2">Verification Failed</h2>
-                    <p class="text-gray-700 mb-4">{{ result }}</p>
-                    
-                    <div class="bg-red-50 p-4 rounded-lg w-full max-w-md">
-                        <h3 class="font-semibold text-red-800 mb-2">Possible Issues</h3>
-                        <ul class="text-left text-red-700 space-y-1">
-                            <li>• The document may not be signed by DigiSign</li>
-                            <li>• The document may have been tampered with</li>
-                            <li>• The signature could be invalid or corrupted</li>
+            </div>
+            
+            <div class="bg-green-50 p-4 rounded-lg mb-6">
+                <div class="flex">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <p class="text-sm text-green-800 font-medium">
+                            What this verification confirms:
+                        </p>
+                        <ul class="text-xs text-green-700 list-disc pl-5 space-y-1 mt-1">
+                            <li>The signer is a registered DigiSign user</li>
+                            <li>The signature is cryptographically valid</li>
+                            <li>The signer's identity has been verified through our system</li>
                         </ul>
                     </div>
                 </div>
-            {% endif %}
+            </div>
+            
+        {% else %}
+            <div class="flex items-center mb-6">
+                <div class="bg-red-100 p-3 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">Verification Failed</h2>
+                    <p class="text-lg text-red-600">{{ result }}</p>
+                </div>
+            </div>
+            
+            <div class="bg-red-50 p-4 rounded-lg mb-6">
+                <div class="flex">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <p class="text-sm text-red-800 font-medium">
+                            Possible reasons for verification failure:
+                        </p>
+                        <ul class="text-xs text-red-700 list-disc pl-5 space-y-1 mt-1">
+                            <li>The provided public key may be incorrect or incomplete</li>
+                            <li>The user may not be registered in our system</li>
+                            <li>There may be a typo in the public key</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        
+        <div class="flex space-x-4">
+            <a href="{{ url_for('verify_pdf') }}" class="bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Verify Document
+            </a>
         </div>
     </div>
-    
-    <div class="flex justify-center">
-        <a href="{{ url_for('verify_pdf') }}" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            Verify Another Document
-        </a>
-    </div>
 </div>
-{% endblock %}
+</div> {% endblock %}

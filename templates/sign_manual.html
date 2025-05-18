@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Manual Sign Position</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.6.172/pdf.min.js"></script>
+<style>
+  #pdf-canvas {
+    border: 1px solid black;
+    cursor: crosshair;
+  }
+</style>
+</head>
+<body>
+<h2>Upload PDF dan pilih posisi tanda tangan secara manual</h2>
+
+<form method="POST" enctype="multipart/form-data" id="signForm">
+    <input type="file" name="pdf" id="pdfFile" accept="application/pdf" required />
+    <br><br>
+    Password Private Key: <input type="password" name="password" required /><br><br>
+
+    <input type="hidden" name="pos_x" id="pos_x" />
+    <input type="hidden" name="pos_y" id="pos_y" />
+    <input type="hidden" name="page_num" id="page_num" value="0" />
+
+    <canvas id="pdf-canvas" width="600"></canvas>
+    <p>Click on the PDF to select position for QR code</p>
+    <p>Selected Position: X=<span id="posXDisplay"></span>, Y=<span id="posYDisplay"></span>, Page=<span id="pageDisplay">0</span></p>
+
+    <button type="submit">Sign PDF</button>
+</form>
+
+<script>
+const pdfCanvas = document.getElementById('pdf-canvas');
+const ctx = pdfCanvas.getContext('2d');
+const posXInput = document.getElementById('pos_x');
+const posYInput = document.getElementById('pos_y');
+const posXDisplay = document.getElementById('posXDisplay');
+const posYDisplay = document.getElementById('posYDisplay');
+const pageNumInput = document.getElementById('page_num');
+const pageDisplay = document.getElementById('pageDisplay');
+
+let pdfDoc = null;
+let scale = 1;
+let currentPage = 1;
+
+function renderPage(num) {
+    pdfDoc.getPage(num).then(function(page) {
+        const viewport = page.getViewport({ scale: scale });
+        pdfCanvas.height = viewport.height;
+        pdfCanvas.width = viewport.width;
+
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+        };
+        page.render(renderContext);
+        currentPage = num;
+        pageNumInput.value = num - 1;  // zero-based page number for backend
+        pageDisplay.textContent = num - 1;
+    });
+}
+
+document.getElementById('pdfFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file.type !== 'application/pdf') {
+        alert('Please select a PDF file.');
+        return;
+    }
+    const fileReader = new FileReader();
+    fileReader.onload = function() {
+        const typedarray = new Uint8Array(this.result);
+
+        pdfjsLib.getDocument(typedarray).promise.then(function(pdfDoc_) {
+            pdfDoc = pdfDoc_;
+            renderPage(1);
+        });
+    };
+    fileReader.readAsArrayBuffer(file);
+});
+
+pdfCanvas.addEventListener('click', function(event) {
+    const rect = pdfCanvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    posXInput.value = Math.floor(x);
+    posYInput.value = Math.floor(pdfCanvas.height - y); // Flip Y axis karena PDF origin di kiri bawah
+    posXDisplay.textContent = posXInput.value;
+    posYDisplay.textContent = posYInput.value;
+});
+</script>
+</body>
+</html>

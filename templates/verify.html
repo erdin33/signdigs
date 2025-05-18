@@ -1,45 +1,72 @@
-{% extends "base.html" %}
-{% block title %}Verify Document - DigiSign{% endblock %}
-{% block content %}
-<div class="flex flex-col">
-    <h1 class="text-3xl font-bold text-blue-700 mb-6">Verify Document</h1>
-    
-    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div class="p-6">
-            <p class="text-gray-700 mb-6">Upload a signed PDF document to verify its authenticity. The system will check if the document has a valid digital signature.</p>
-            
-            <form action="{{ url_for('verify_pdf') }}" method="post" enctype="multipart/form-data" class="space-y-6">
+{% extends "base.html" %} {% block title %}Verify Signature - DigiSign{% endblock %} {% block content %}
+
+<div class="flex flex-col"> <h1 class="text-3xl font-bold text-blue-700 mb-6">Verify Signature</h1> <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6"> <div class="p-6"> <p class="text-gray-700 mb-6">Enter a public key to verify a signer's authenticity. The system will check if the public key is associated with a registered user.</p>
+    <form action="{{ url_for('verify_public_key') }}" method="post" class="space-y-6">
+        <div>
+            <label for="public_key" class="block text-sm font-medium text-gray-700 mb-1">Enter Public Key</label>
+            <div class="flex items-center">
+                <input type="text" name="public_key" id="public_key" required
+                       placeholder="Enter the public key (hexadecimal format)"
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+            </div>
+            <p class="mt-1 text-xs text-gray-500">Enter the public key in hexadecimal format (usually found in the QR code)</p>
+        </div>
+        
+        <div class="bg-blue-50 p-4 rounded-lg">
+            <div class="flex">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
                 <div>
-                    <label for="pdf" class="block text-sm font-medium text-gray-700 mb-1">Select Signed PDF Document</label>
-                    <div class="flex items-center">
-                        <input type="file" name="pdf" id="pdf" accept=".pdf" required 
-                               class="block w-full text-sm text-gray-500
-                                      file:mr-4 file:py-2 file:px-4
-                                      file:rounded file:border-0
-                                      file:text-sm file:font-semibold
-                                      file:bg-blue-50 file:text-blue-700
-                                      hover:file:bg-blue-100">
-                    </div>
+                    <p class="text-sm text-blue-800 font-medium mb-1">
+                        How verification works:
+                    </p>
+                    <ul class="text-xs text-blue-700 list-disc pl-5 space-y-1">
+                        <li>DigiSign looks up the public key to verify the signer's identity</li>
+                        <li>Public keys are unique cryptographic identifiers for each user</li>
+                        <li>The verification confirms the key belongs to a registered user</li>
+                    </ul>
                 </div>
-                
-                <div class="bg-yellow-50 p-4 rounded-lg">
-                    <div class="flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p class="text-sm text-yellow-800">
-                            Only documents signed with DigiSign can be verified.
-                        </p>
-                    </div>
-                </div>
-                
-                <div>
-                    <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
-                        Verify Document
-                    </button>
-                </div>
-            </form>
+            </div>
+        </div>
+        
+        <div class="bg-yellow-50 p-4 rounded-lg">
+            <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p class="text-sm text-yellow-800">
+                    Public keys should be copied exactly as they appear in the QR code or verification information.
+                </p>
+            </div>
+        </div>
+        
+        <div>
+            <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Verify Signature
+            </button>
+        </div>
+    </form>
+</div>
+</div> <div class="bg-white rounded-lg shadow-lg overflow-hidden"> <div class="p-6"> <h2 class="text-xl font-semibold text-gray-800 mb-4">Verification FAQ</h2>
+    <div class="space-y-4">
+        <div>
+            <h3 class="font-medium text-gray-800">Where can I find the public key?</h3>
+            <p class="text-gray-600 text-sm">The public key can be found in the QR code on signed documents, or it may have been shared with you directly by the signer.</p>
+        </div>
+        
+        <div>
+            <h3 class="font-medium text-gray-800">What information will verification provide?</h3>
+            <p class="text-gray-600 text-sm">Verification will confirm if the public key belongs to a registered DigiSign user and provide their identity information including username and institution.</p>
+        </div>
+        
+        <div>
+            <h3 class="font-medium text-gray-800">Can I still verify signed PDF documents?</h3>
+            <p class="text-gray-600 text-sm">Yes, you can also <a href="{{ url_for('verify_pdf') }}" class="text-blue-600 hover:underline">verify signed PDF documents</a> by uploading them to our document verification system.</p>
         </div>
     </div>
 </div>
-{% endblock %}
+</div> </div> {% endblock %}

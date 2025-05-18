@@ -2,24 +2,188 @@ from flask import Flask, render_template, request, send_file, redirect, url_for,
 from flask_sqlalchemy import SQLAlchemy
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey, Ed448PublicKey
 from cryptography.hazmat.primitives import serialization
+from cryptography.fernet import Fernet
 import qrcode
 import os
 import uuid
 import io
 import functools
 import werkzeug.security
+import base64
+import hashlib
+import fitz
+import smtplib
+
+from email.message import EmailMessage
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
+from reportlab.lib.colors import black
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-UPLOAD_FOLDER = 'uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'digisignkel11@gmail.com')
+# Gunakan app password untuk Gmail, bukan password akun Gmail biasa
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'ivzj wsus vjbe davy')  # Ganti dengan App Password yang dihasilkan Google
+
+
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')  # path absolut ke folder uploads
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Pastikan folder uploads ada
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+
+def get_fernet_key_from_password(password: str) -> bytes:
+    # Gunakan SHA-256 untuk menghasilkan key 32-byte
+    return base64.urlsafe_b64encode(hashlib.sha256(password.encode()).digest())
+
+def encrypt_private_key(private_key_bytes: bytes, password: str) -> bytes:
+    key = get_fernet_key_from_password(password)
+    f = Fernet(key)
+    return f.encrypt(private_key_bytes)
+
+def decrypt_private_key(encrypted_key: bytes, password: str) -> bytes:
+    key = get_fernet_key_from_password(password)
+    f = Fernet(key)
+    return f.decrypt(encrypted_key)
+
+
+def create_verification_qr(username, public_key_hex, institution=None, email=None):
+    """
+    Membuat QR code dengan URL verifikasi sederhana
+    """
+    # Buat URL verifikasi yang lebih sederhana
+    # Asumsi: aplikasi berjalan di domain yang dapat diakses, misalnya http://yourdomain.com
+    # Ganti dengan domain yang sebenarnya
+    base_url = "http://127.0.0.1:5000/verify_qr"  # Ubah endpoint name untuk menghindari konflik
+    
+    # Buat parameter yang diperlukan untuk verifikasi
+    params = {
+        "username": username,
+        "pubkey": public_key_hex[:40],  # Batasi panjang untuk QR code yang lebih kecil
+    }
+    
+    if institution:
+        params["institution"] = institution
+    
+    if email:
+        params["email"] = email
+    
+    # Buat URL dengan parameter
+    from urllib.parse import urlencode
+    verification_url = f"{base_url}?{urlencode(params)}"
+    
+    # Jika URL masih terlalu panjang, pertimbangkan untuk membuat ID pendek di database
+    # dan gunakan URL seperti http://yourdomain.com/v/ID_PENDEK
+    
+    # Buat QR code dengan batasan versi
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(verification_url)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Konversi QR code ke BytesIO
+    img_io = io.BytesIO()
+    img.save(img_io)
+    img_io.seek(0)
+    
+    return img_io
+
+
+
+def find_signature_position(pdf_path, keyword="Tanda Tangan"):
+    """
+    Mencari posisi untuk menempatkan tanda tangan di kiri bawah halaman.
+    """
+    doc = fitz.open(pdf_path)
+    for page_num in range(len(doc) - 1, -1, -1):  # Mulai dari halaman terakhir
+        page = doc.load_page(page_num)
+        # Ambil dimensi halaman
+        page_rect = page.rect
+        page_width = page_rect.width
+        page_height = page_rect.height
+        
+        # Posisi di pojok kiri bawah dokumen (50px dari kiri, 50px dari bawah)
+        x = 10
+        y = 10  # Jarak dari bawah halaman yang kecil untuk menempatkan di bagian bawah
+        
+        # Jika menemukan kata kunci, gunakan halaman tersebut
+        text_instances = page.search_for(keyword)
+        if text_instances:
+            # Kembalikan koordinat X, Y (dari bawah), dan nomor halaman
+            return int(x), int(y), page_num
+            
+        # Jika ini halaman terakhir dan tidak ada kata kunci, gunakan halaman terakhir
+        if page_num == len(doc) - 1:
+            return int(x), int(y), page_num
+            
+    # Default ke halaman pertama jika dokumen kosong
+    if len(doc) > 0:
+        page = doc.load_page(0)
+        page_height = page.rect.height
+        x = 70
+        y = 70
+        return int(x), int(y), 0
+        
+    return None, None, None  # Tidak ditemukan
+
+
+def send_signature_email(recipient_email, username, doc_name, sign_time, file_path):
+    try:
+        msg = EmailMessage()
+        msg['Subject'] = f'Dokumen Ditandatangani oleh {username}'
+        msg['From'] = app.config['MAIL_USERNAME']
+        msg['To'] = recipient_email
+
+        # Isi email
+        msg.set_content(f"""
+        Halo,
+
+        Dokumen Anda '{doc_name}' telah berhasil ditandatangani oleh {username}.
+        Waktu penandatanganan: {sign_time} UTC
+
+        Dokumen yang sudah ditandatangani terlampir dalam email ini. Anda dapat mengunduhnya langsung.
+
+        Salam,
+        Tim DigiSign
+        """.strip())
+
+        # Tambahkan file PDF sebagai lampiran
+        with open(file_path, 'rb') as f:
+            file_data = f.read()
+        
+        # Lampirkan file dengan nama yang jelas
+        msg.add_attachment(file_data, maintype='application', subtype='pdf', filename=doc_name)
+
+        # Kirim email
+        with smtplib.SMTP(app.config['MAIL_SERVER'], app.config['MAIL_PORT']) as smtp:
+            smtp.starttls()
+            smtp.login(app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD'])
+            smtp.send_message(msg)
+            return True
+    except Exception as e:
+        print(f"Gagal mengirim email: {e}")
+        return False
+
 
 db = SQLAlchemy(app)
 
@@ -29,6 +193,8 @@ class User(db.Model):
     password = db.Column(db.String(200), nullable=False)
     public_key = db.Column(db.LargeBinary, nullable=False)
     private_key = db.Column(db.LargeBinary, nullable=False)
+    institution = db.Column(db.String(120), nullable=True)
+    email = db.Column(db.String(120), nullable=True)
 
 class SignedDocument(db.Model):
     id = db.Column(db.String(36), primary_key=True)
@@ -36,6 +202,7 @@ class SignedDocument(db.Model):
     signature = db.Column(db.LargeBinary, nullable=False)
     username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False)
+
 
 @app.context_processor
 def inject_now():
@@ -62,6 +229,8 @@ def register():
     username = request.form['username']
     password = request.form['password']
     confirm_password = request.form['confirm_password']
+    institution = request.form['institution']
+    email = request.form['email']
 
     if User.query.filter_by(username=username).first():
         flash('Username already exists', 'error')
@@ -78,11 +247,14 @@ def register():
         encoding=serialization.Encoding.Raw,
         format=serialization.PublicFormat.Raw
     )
+    
     priv_bytes = private_key.private_bytes(
         encoding=serialization.Encoding.Raw,
         format=serialization.PrivateFormat.Raw,
         encryption_algorithm=serialization.NoEncryption()
     )
+    
+    encrypted_priv_bytes = encrypt_private_key(priv_bytes, password)
 
     qr = qrcode.make(pub_bytes.hex())
     barcode_path = f"{UPLOAD_FOLDER}/{username}_pubkey.png"
@@ -92,13 +264,16 @@ def register():
         username=username,
         password=werkzeug.security.generate_password_hash(password),
         public_key=pub_bytes,
-        private_key=priv_bytes
-    )
+        private_key=encrypted_priv_bytes,
+        institution=institution,
+        email=email  # Simpan email user
+    ) 
     db.session.add(new_user)
     db.session.commit()
 
     flash('Registration successful! Please log in', 'success')
     return redirect(url_for('login'))
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -131,25 +306,72 @@ def dashboard():
     user_docs = SignedDocument.query.filter_by(username=username).all()
     return render_template('dashboard.html', username=username, qr_path=qr_path, user_docs=user_docs)
 
-def overlay_barcode_to_pdf(barcode_path, original_pdf):
+
+# Fungsi untuk menambahkan QR code dengan informasi tambahan ke dokumen PDF
+def overlay_signature_to_pdf(barcode_path, original_pdf_path, x, y, target_page=None, username="", institution=""):
+    """
+    Menambahkan tanda tangan QR code ke PDF dengan informasi tambahan
+    """
     packet = io.BytesIO()
-    can = canvas.Canvas(packet, pagesize=letter)
-    can.drawImage(ImageReader(barcode_path), 400, 100, width=150, height=150)
-    can.save()
-    packet.seek(0)
-
-    overlay_pdf = PdfReader(packet)
-    base_pdf = PdfReader(original_pdf)
+    
+    # Baca dokumen asli untuk mendapatkan ukuran halaman yang tepat
+    doc = fitz.open(original_pdf_path)
+    base_pdf = PdfReader(original_pdf_path)
     writer = PdfWriter()
-
-    first_page = base_pdf.pages[0]
-    first_page.merge_page(overlay_pdf.pages[0])
-    writer.add_page(first_page)
-
-    for page in base_pdf.pages[1:]:
+    
+    # Proses setiap halaman dalam dokumen
+    for page_num in range(len(base_pdf.pages)):
+        # Buat canvas baru untuk setiap halaman
+        if page_num < len(doc):
+            page = doc.load_page(page_num)
+            page_width = page.rect.width
+            page_height = page.rect.height
+        else:
+            # Default ke ukuran letter jika halaman tidak ada
+            page_width, page_height = letter
+        
+        # Reset buffer untuk membuat overlay baru
+        packet.seek(0)
+        packet.truncate(0)
+        
+        can = canvas.Canvas(packet, pagesize=(page_width, page_height))
+        
+        # Ukuran QR code yang lebih kecil
+        qr_width = 70
+        qr_height = 70
+        
+        # Koordinat y sebenarnya pada canvas (dari bawah halaman)
+        canvas_y = y
+        
+        # Gambar QR code
+        can.drawImage(ImageReader(barcode_path), x, canvas_y, width=qr_width, height=qr_height)
+        
+        # Set font untuk teks
+        try:
+            pdfmetrics.registerFont(TTFont('Helvetica-Bold', 'Helvetica-Bold.ttf'))
+            font_name = 'Helvetica-Bold'
+        except:
+            font_name = 'Helvetica-Bold'
+        
+        # Tambahkan teks informasi di bawah QR code
+        can.setFont(font_name, 4)
+        can.setFillColor(black)
+        can.drawString(x - -15, canvas_y - 1, "Signature By DigSign")
+        can.drawString(x - -15, canvas_y - 5, f"Signed by: {username}")
+        if institution:
+            can.drawString(x - -15, canvas_y - 9, f"From: {institution}")
+        
+        can.save()
+        packet.seek(0)
+        
+        # Overlay QR code ke halaman
+        overlay_pdf = PdfReader(packet)
+        page = base_pdf.pages[page_num]
+        page.merge_page(overlay_pdf.pages[0])
         writer.add_page(page)
-
+    
     return writer
+
 
 @app.route('/sign', methods=['GET', 'POST'])
 @login_required
@@ -160,18 +382,71 @@ def sign_pdf():
     username = session['username']
     user = User.query.filter_by(username=username).first()
     file = request.files['pdf']
+    password = request.form.get('password')
 
     if file.filename == '':
-        flash('No file selected', 'error')
+        flash('Tidak ada file yang dipilih', 'error')
         return redirect(url_for('sign_pdf'))
 
-    priv_key = Ed448PrivateKey.from_private_bytes(user.private_key)
+    if not password:
+        flash('Password diperlukan untuk mendekripsi private key Anda', 'error')
+        return redirect(url_for('sign_pdf'))
+
+    try:
+        decrypted_key_bytes = decrypt_private_key(user.private_key, password)
+        priv_key = Ed448PrivateKey.from_private_bytes(decrypted_key_bytes)
+    except Exception as e:
+        flash(f'Gagal mendekripsi private key. Password mungkin salah. Error: {str(e)}', 'error')
+        return redirect(url_for('sign_pdf'))
 
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(file_path)
 
-    barcode_path = f"{UPLOAD_FOLDER}/{username}_pubkey.png"
-    writer = overlay_barcode_to_pdf(barcode_path, file_path)
+    x, y, _ = find_signature_position(file_path)
+    if x is None or y is None:
+        doc = fitz.open(file_path)
+        if len(doc) > 0:
+            last_page = doc.load_page(len(doc) - 1)
+            x, y = 20, 20
+        else:
+            x, y = 20, 20
+    
+    # Generate QR code khusus untuk dokumen ini dengan informasi dokumen
+    doc_id = str(uuid.uuid4())
+    sign_time = datetime.utcnow().isoformat()
+    
+    # Ambil public key dalam format hex
+    pub_key_hex = user.public_key.hex()
+    
+    # Buat data untuk QR code yang khusus untuk dokumen ini
+    doc_data = {
+        "doc_id": doc_id,
+        "signer": username,
+        "institution": user.institution if user.institution else "",
+        "time": sign_time,
+        "public_key": pub_key_hex
+    }
+    
+    # Buat QR code dengan data URI untuk dokumen ini
+    doc_qr_path = f"{UPLOAD_FOLDER}/{doc_id}_verification.png"
+    img_io = create_verification_qr(
+        username, 
+        pub_key_hex, 
+        user.institution,
+        user.email
+    )
+    
+    with open(doc_qr_path, 'wb') as f:
+        f.write(img_io.getvalue())
+    
+    # Gunakan QR code yang baru dibuat untuk overlay ke dokumen
+    writer = overlay_signature_to_pdf(
+        doc_qr_path, 
+        file_path, 
+        x, y, 
+        username=username, 
+        institution=user.institution
+    )
 
     temp_pdf = io.BytesIO()
     writer.write(temp_pdf)
@@ -179,28 +454,54 @@ def sign_pdf():
 
     signature = priv_key.sign(pdf_data)
 
+    # Tambahkan metadata yang lebih lengkap
     writer.add_metadata({
         '/SignedBy': username,
-        '/Signature': signature.hex()
+        '/Signature': signature.hex(),
+        '/Institution': user.institution if user.institution else "",
+        '/SignDate': sign_time,
+        '/DocumentID': doc_id,
+        '/PublicKey': pub_key_hex
     })
 
-    signed_path = os.path.join(UPLOAD_FOLDER, f"signed_{file.filename}")
+    signed_filename = f"signed_{file.filename}"
+    signed_path = os.path.join(UPLOAD_FOLDER, signed_filename)
     with open(signed_path, 'wb') as f:
         writer.write(f)
 
-    doc_id = str(uuid.uuid4())
     new_doc = SignedDocument(
         id=doc_id,
-        filename=f"signed_{file.filename}",
+        filename=signed_filename,
         signature=signature,
         username=username,
         timestamp=datetime.utcnow()
     )
     db.session.add(new_doc)
     db.session.commit()
-
-    flash('Document signed successfully!', 'success')
+    
+    # Kirim email verifikasi jika user memiliki email
+    if user.email:
+        email_sent = send_signature_email(
+            recipient_email=user.email,
+            username=username,
+            doc_name=signed_filename,
+            sign_time=sign_time,
+            file_path=signed_path
+        )
+        if email_sent:
+            flash('Dokumen berhasil ditandatangani dan telah dikirim ke email Anda!', 'success')
+        else:
+            flash('Dokumen berhasil ditandatangani, tetapi gagal mengirim ke email.', 'warning')
+    else:
+        flash('Dokumen berhasil ditandatangani! (Email notifikasi tidak dikirim karena alamat email tidak tersedia)', 'success')
+        
     return send_file(signed_path, as_attachment=True)
+
+
+@app.route('/about')
+def about():
+    """Route for the About page"""
+    return render_template('about.html')
 
 @app.route('/verify', methods=['GET', 'POST'])
 def verify_pdf():
@@ -212,7 +513,7 @@ def verify_pdf():
         flash('No file uploaded', 'error')
         return redirect(url_for('verify_pdf'))
 
-    file_path = os.path.join(UPLOAD_FOLDER, f"verify_{file.filename}")
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"verify_{file.filename}")
     file.save(file_path)
 
     with open(file_path, 'rb') as f:
@@ -225,6 +526,8 @@ def verify_pdf():
 
         signature = bytes.fromhex(metadata['/Signature'])
         username = metadata['/SignedBy']
+        institution = metadata.get('/Institution', 'Not specified')
+        sign_date = metadata.get('/SignDate', 'Unknown')
 
         user = User.query.filter_by(username=username).first()
         if not user:
@@ -243,11 +546,70 @@ def verify_pdf():
 
         try:
             pub_key.verify(signature, pdf_data)
-            result = f"Document is valid. Signed by: {username}"
-            return render_template('verify_result.html', result=result, valid=True, signer=username)
+            result = f"Document is valid. Signed by: {username} from {user.institution}"
+            return render_template('verify_result.html', 
+                                  result=result, 
+                                  valid=True, 
+                                  signer=username, 
+                                  institution=user.institution,
+                                  sign_date=sign_date)
         except Exception:
             result = "Invalid signature."
             return render_template('verify_result.html', result=result, valid=False)
+
+@app.route('/verify_key', methods=['GET'])
+def verify_key():
+    """Route for the public key verification page"""
+    return render_template('verify.html')
+
+@app.route('/verify_public_key', methods=['POST'])
+def verify_public_key():
+    """Handle verification of public keys directly entered by users"""
+    public_key_hex = request.form.get('public_key')
+    
+    if not public_key_hex:
+        flash('No public key provided', 'error')
+        return redirect(url_for('verify_key'))
+    
+    try:
+        # Clean the input in case users add spaces or other characters
+        public_key_hex = public_key_hex.strip()
+        
+        # Check if this is a complete key or a prefix (from QR code)
+        # If it's a prefix, find users whose public key starts with this value
+        users = []
+        
+        if len(public_key_hex) >= 40:  # Assuming 40 chars is minimum useful length
+            # Try to find exact match first
+            for user in User.query.all():
+                user_key_hex = user.public_key.hex()
+                
+                # Check for exact match or prefix match
+                if user_key_hex == public_key_hex or user_key_hex.startswith(public_key_hex):
+                    users.append(user)
+        
+        if not users:
+            result = "No matching public key found in the system."
+            return render_template('verify_result.html', result=result, valid=False)
+        
+        # If we found exactly one user
+        if len(users) == 1:
+            user = users[0]
+            result = f"Public key is valid. Associated with: {user.username}"
+            return render_template('verify_result.html', 
+                                result=result, 
+                                valid=True, 
+                                signer=user.username, 
+                                institution=user.institution if user.institution else "Not specified",
+                                sign_date="Key verification only")
+        else:
+            # Multiple matches found (unlikely but possible with short prefixes)
+            result = f"Multiple users found with matching public key. Please provide more characters."
+            return render_template('verify_result.html', result=result, valid=False)
+            
+    except Exception as e:
+        result = f"Error verifying public key: {str(e)}"
+        return render_template('verify_result.html', result=result, valid=False)
 
 @app.route('/download_qr')
 @login_required
@@ -255,6 +617,46 @@ def download_qr():
     username = session['username']
     barcode_path = f"{UPLOAD_FOLDER}/{username}_pubkey.png"
     return send_file(barcode_path, mimetype='image/png')
+
+
+# Ubah nama endpoint untuk menghindari konflik
+@app.route('/verify_qr')
+def verify_qr_signature():
+    """
+    Endpoint untuk verifikasi tanda tangan dari QR code
+    """
+    username = request.args.get('username')
+    pubkey = request.args.get('pubkey')
+    institution = request.args.get('institution')
+    email = request.args.get('email')
+    
+    if not username or not pubkey:
+        flash('Data verifikasi tidak lengkap', 'error')
+        return redirect(url_for('verify_pdf'))
+    
+    # Cari user dengan username tersebut
+    user = User.query.filter_by(username=username).first()
+    
+    if not user:
+        return render_template('verify_result.html', 
+                              result="Pengguna tidak ditemukan dalam sistem.", 
+                              valid=False)
+    
+    # Bandingkan public key dari database dengan yang ada di QR code
+    actual_pubkey = user.public_key.hex()
+    if not actual_pubkey.startswith(pubkey):
+        return render_template('verify_result.html', 
+                              result="Public key tidak sesuai dengan pengguna.", 
+                              valid=False)
+    
+    # Jika verifikasi berhasil
+    return render_template('verify_result.html', 
+                          result=f"Tanda tangan valid. Ditandatangani oleh: {username} dari {user.institution if user.institution else 'Tidak ada institusi'}",
+                          valid=True,
+                          signer=username,
+                          institution=user.institution if user.institution else "Tidak ada institusi",
+                          sign_date="Validasi melalui QR code")
+
 
 @app.route('/download_document/<doc_id>')
 @login_required
@@ -268,6 +670,7 @@ def download_document(doc_id):
         return redirect(url_for('dashboard'))
         
     return send_file(file_path, as_attachment=True)
+
 
 if __name__ == '__main__':
     with app.app_context():

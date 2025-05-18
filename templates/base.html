@@ -3,28 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}DigiSign - Digital Signature System{% endblock %}</title>
+    <title>DigiSign - Digital Signature System</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.3/dist/cdn.min.js" defer></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <nav class="bg-blue-800 text-white shadow-md">
-        <div class="container mx-auto px-4 py-3">
-            <div class="flex justify-between items-center">
+<body>
+    <!-- Enhanced Navigation Bar -->
+    <nav class="bg-gradient-to-r from-blue-800 to-blue-700 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <!-- Logo & Brand -->
                 <div class="flex items-center">
-                    <a href="{{ url_for('index') }}" class="text-xl font-bold">DigiSign</a>
+                    <a href="{{ url_for('index') }}" class="flex items-center">
+                        <i class="fas fa-file-signature text-2xl mr-2"></i>
+                        <span class="font-bold text-xl tracking-tight">DigiSign</span>
+                    </a>
                 </div>
-                <div class="flex items-center space-x-4">
+                
+                <!-- Desktop Navigation Links -->
+                <div class="hidden md:flex items-center space-x-4">
                     {% if session.username %}
-                        <a href="{{ url_for('dashboard') }}" class="hover:text-blue-200">Dashboard</a>
-                        <a href="{{ url_for('sign_pdf') }}" class="hover:text-blue-200">Sign Document</a>
-                        <a href="{{ url_for('verify_pdf') }}" class="hover:text-blue-200">Verify Document</a>
+                        <a href="{{ url_for('dashboard') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-tachometer-alt mr-1.5"></i> Dashboard
+                        </a>
+                        <a href="{{ url_for('sign_pdf') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-signature mr-1.5"></i> Sign Document
+                        </a>
+                        <a href="{{ url_for('verify_pdf') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-check-circle mr-1.5"></i> Verify Document
+                        </a>
+                        <a href="{{ url_for('about') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-info-circle mr-1.5"></i> About
+                        </a>
                         <div class="border-l border-blue-600 h-6 mx-2"></div>
-                        <a href="{{ url_for('logout') }}" class="hover:text-blue-200">Logout</a>
+                        <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-sign-out-alt mr-1.5"></i> Logout
+                        </a>
                     {% else %}
-                        <a href="{{ url_for('verify_pdf') }}" class="hover:text-blue-200">Verify Document</a>
-                        <a href="{{ url_for('login') }}" class="hover:text-blue-200">Login</a>
-                        <a href="{{ url_for('register') }}" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Register</a>
+                        <a href="{{ url_for('verify_pdf') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-check-circle mr-1.5"></i> Verify Document
+                        </a>
+                        <a href="{{ url_for('about') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-info-circle mr-1.5"></i> About
+                        </a>
+                        <a href="{{ url_for('login') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-sign-in-alt mr-1.5"></i> Login
+                        </a>
+                        <a href="{{ url_for('register') }}" class="ml-2 px-4 py-2 bg-white text-blue-700 font-medium rounded-lg hover:bg-blue-50 shadow-md transition duration-200 flex items-center">
+                            <i class="fas fa-user-plus mr-1.5"></i> Register
+                        </a>
+                    {% endif %}
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden flex items-center">
+                    <button x-data="{ open: false }" @click="open = !open" class="text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-2" aria-label="Main menu">
+                        <svg x-show="!open" class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <svg x-show="open" class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24" style="display: none;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Mobile Menu -->
+            <div x-data="{ open: false }" @click.away="open = false" class="md:hidden">
+                <div x-show="open" class="pt-2 pb-3 space-y-1">
+                    {% if session.username %}
+                        <a href="{{ url_for('dashboard') }}" class="block px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
+                        </a>
+                        <a href="{{ url_for('sign_pdf') }}" class="block px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-signature mr-2"></i> Sign Document
+                        </a>
+                        <a href="{{ url_for('verify_pdf') }}" class="block px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-check-circle mr-2"></i> Verify Document
+                        </a>
+                        <a href="{{ url_for('about') }}" class="block px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-info-circle mr-2"></i> About
+                        </a>
+                        <div class="border-t border-blue-600 my-2"></div>
+                        <a href="{{ url_for('logout') }}" class="block px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('verify_pdf') }}" class="block px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-check-circle mr-2"></i> Verify Document
+                        </a>
+                        <a href="{{ url_for('about') }}" class="block px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-info-circle mr-2"></i> About
+                        </a>
+                        <a href="{{ url_for('login') }}" class="block px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
+                            <i class="fas fa-sign-in-alt mr-2"></i> Login
+                        </a>
+                        <a href="{{ url_for('register') }}" class="block px-3 py-2 mt-1 text-center bg-white text-blue-700 font-medium rounded-md hover:bg-blue-50 shadow-md transition duration-200">
+                            <i class="fas fa-user-plus mr-2"></i> Register
+                        </a>
                     {% endif %}
                 </div>
             </div>
@@ -53,16 +130,21 @@
         {% block content %}{% endblock %}
     </div>
 
-    <footer class="bg-gray-800 text-white py-6 mt-12">
-        <div class="container mx-auto px-4">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <p>Digital Signature System &copy; {{ now().year }}</p>
-                <div class="mt-4 md:mt-0">
-                    <a href="#" class="text-blue-300 hover:text-blue-200 mr-4">Privacy Policy</a>
-                    <a href="#" class="text-blue-300 hover:text-blue-200">Terms of Service</a>
+     <!-- Footer Bottom -->
+            <div class="bg-blue-900 py-6">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex flex-col md:flex-row justify-between items-center">
+                        <div class="text-gray-400 text-sm mb-4 md:mb-0">
+                            &copy; {{ now().year }} DigiSign. All rights reserved.
+                        </div>
+                        <div class="flex flex-wrap justify-center space-x-6">
+                            <a href="#" class="text-gray-400 hover:text-white text-sm transition duration-300">Privacy Policy</a>
+                            <a href="#" class="text-gray-400 hover:text-white text-sm transition duration-300">Terms of Service</a>
+                            <a href="#" class="text-gray-400 hover:text-white text-sm transition duration-300">Cookie Policy</a>
+                            <a href="#" class="text-gray-400 hover:text-white text-sm transition duration-300">GDPR</a>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </footer>
 </body>
 </html>
