@@ -13,7 +13,8 @@ import base64
 import hashlib
 import fitz
 import smtplib
-
+import re
+from werkzeug.security import generate_password_hash, check_password_hash
 from email.message import EmailMessage
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
@@ -560,7 +561,7 @@ def verify_pdf():
 @app.route('/verify_key', methods=['GET'])
 def verify_key():
     """Route for the public key verification page"""
-    return render_template('verify.html')
+    return render_template('verify_key.html')
 
 @app.route('/verify_public_key', methods=['POST'])
 def verify_public_key():
@@ -595,7 +596,7 @@ def verify_public_key():
         # If we found exactly one user
         if len(users) == 1:
             user = users[0]
-            result = f"Public key is valid. Associated with: {user.username}"
+            result = f"Tanda tangan valid. Ditandatangani : {user.username} dari {user.institution}"
             return render_template('verify_result.html', 
                                 result=result, 
                                 valid=True, 
@@ -610,6 +611,97 @@ def verify_public_key():
     except Exception as e:
         result = f"Error verifying public key: {str(e)}"
         return render_template('verify_result.html', result=result, valid=False)
+    
+    
+    
+@app.route('/edit_profile', methods=['GET', 'POST'])
+def edit_profile():
+    if 'username' not in session:
+        flash('Please login to access this page.', 'error')
+        return redirect(url_for('login'))
+    
+    if request.method == 'GET':
+        # Ambil data user dari database menggunakan SQLAlchemy
+        user = User.query.filter_by(username=session['username']).first()
+        if user:
+            return render_template('edit_profile.html', user=user)
+        else:
+            flash('User not found.', 'error')
+            # Ganti 'home' dengan 'index' atau 'dashboard' sesuai halaman utama Anda
+            return redirect(url_for('index'))  # atau url_for('dashboard')
+    
+    elif request.method == 'POST':
+        # Ambil data dari form
+        new_email = request.form.get('email')
+        new_institution = request.form.get('institution')
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Validasi input
+        if not new_email:
+            flash('Email is required.', 'error')
+            return redirect(url_for('edit_profile'))
+        
+        # Validasi email format
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', new_email):
+            flash('Please enter a valid email address.', 'error')
+            return redirect(url_for('edit_profile'))
+        
+        # Ambil data user saat ini
+        current_user = User.query.filter_by(username=session['username']).first()
+        if not current_user:
+            flash('User not found.', 'error')
+            # Ganti 'home' dengan 'index' atau 'dashboard' sesuai halaman utama Anda
+            return redirect(url_for('index'))  # atau url_for('dashboard')
+        
+        # Verifikasi password saat ini jika ada perubahan password
+        if new_password:
+            if not current_password:
+                flash('Current password is required to change password.', 'error')
+                return redirect(url_for('edit_profile'))
+            
+            # Verifikasi password saat ini
+            if not check_password_hash(current_user.password, current_password):
+                flash('Current password is incorrect.', 'error')
+                return redirect(url_for('edit_profile'))
+            
+            # Validasi password baru
+            if new_password != confirm_password:
+                flash('New passwords do not match.', 'error')
+                return redirect(url_for('edit_profile'))
+            
+            if len(new_password) < 6:
+                flash('Password must be at least 6 characters long.', 'error')
+                return redirect(url_for('edit_profile'))
+        
+        # Cek apakah email sudah digunakan oleh user lain
+        if new_email != current_user.email:
+            existing_user = User.query.filter_by(email=new_email).first()
+            if existing_user and existing_user.username != session['username']:
+                flash('Email already registered by another user.', 'error')
+                return redirect(url_for('edit_profile'))
+        
+        try:
+            # Update data user
+            current_user.email = new_email
+            if new_institution is not None:  # Allow empty string
+                current_user.institution = new_institution
+            
+            if new_password:
+                # Update dengan password baru
+                current_user.password = generate_password_hash(new_password)
+            
+            # Simpan perubahan ke database
+            db.session.commit()
+            
+            flash('Profile updated successfully!', 'success')
+            return redirect(url_for('edit_profile'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating profile: {str(e)}', 'error')
+            return redirect(url_for('edit_profile'))
 
 @app.route('/download_qr')
 @login_required

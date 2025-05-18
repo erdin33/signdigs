@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Profile - DigiSign{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white p-8 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Edit Profile</h2>
+        
+        <form method="POST" action="{{ url_for('edit_profile') }}">
+            <!-- Basic Information -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">Basic Information</h3>
+                
+                <div class="mb-4">
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input type="text" id="username" name="username" value="{{ user.username }}" 
+                           class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600" 
+                           disabled readonly>
+                    <p class="mt-1 text-sm text-gray-500">Username cannot be changed</p>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+                    <input type="email" id="email" name="email" value="{{ user.email }}" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="institution" class="block text-sm font-medium text-gray-700 mb-2">institution *</label>
+                    <input type="text" id="full_name" name="institution" value="{{ user.institution }}" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            
+            <!-- Change Password Section -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">Change Password (Optional)</h3>
+                <p class="text-sm text-gray-600 mb-4">Leave blank if you don't want to change your password</p>
+                
+                <div class="mb-4">
+                    <label for="current_password" class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                    <input type="password" id="current_password" name="current_password"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="new_password" class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                    <input type="password" id="new_password" name="new_password"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p class="mt-1 text-sm text-gray-500">Minimum 6 characters</p>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            
+            <!-- Account Information -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-4">Account Information</h3>
+                <div class="bg-gray-50 p-4 rounded-md">
+                    <p class="text-sm text-gray-600">
+                        <strong>Account Created:</strong> {{ user.created_at }}
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Buttons -->
+            <div class="flex gap-4">
+                <button type="submit" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    Update Profile
+                </button>
+                <a href="{{ url_for('dashboard') }}" 
+                   class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// JavaScript untuk validasi password secara real-time
+document.addEventListener('DOMContentLoaded', function() {
+    const newPassword = document.getElementById('new_password');
+    const confirmPassword = document.getElementById('confirm_password');
+    const currentPassword = document.getElementById('current_password');
+    
+    function validatePasswords() {
+        const newPass = newPassword.value;
+        const confirmPass = confirmPassword.value;
+        const currentPass = currentPassword.value;
+        
+        // Reset border colors
+        newPassword.style.borderColor = '';
+        confirmPassword.style.borderColor = '';
+        currentPassword.style.borderColor = '';
+        
+        // If new password is entered, require current password
+        if (newPass && !currentPass) {
+            currentPassword.style.borderColor = 'red';
+        }
+        
+        // Check if passwords match
+        if (newPass && confirmPass && newPass !== confirmPass) {
+            confirmPassword.style.borderColor = 'red';
+        } else if (newPass && confirmPass && newPass === confirmPass) {
+            confirmPassword.style.borderColor = 'green';
+        }
+        
+        // Check password length
+        if (newPass && newPass.length < 6) {
+            newPassword.style.borderColor = 'red';
+        } else if (newPass && newPass.length >= 6) {
+            newPassword.style.borderColor = 'green';
+        }
+    }
+    
+    newPassword.addEventListener('input', validatePasswords);
+    confirmPassword.addEventListener('input', validatePasswords);
+    currentPassword.addEventListener('input', validatePasswords);
+});
+</script>
+{% endblock %}
