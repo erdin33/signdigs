@@ -62,14 +62,13 @@ def decrypt_private_key(encrypted_key: bytes, password: str) -> bytes:
     return f.decrypt(encrypted_key)
 
 
+# Fungsi pembuatan QR code
 def create_verification_qr(username, public_key_hex, institution=None, email=None):
     """
     Membuat QR code dengan URL verifikasi sederhana
     """
-    # Buat URL verifikasi yang lebih sederhana
-    # Asumsi: aplikasi berjalan di domain yang dapat diakses, misalnya http://yourdomain.com
-    # Ganti dengan domain yang sebenarnya
-    base_url = "http://127.0.0.1:5000/verify_qr"  # Ubah endpoint name untuk menghindari konflik
+    # Gunakan HTTP untuk pengembangan lokal
+    base_url = "http://127.0.0.1:5000/verify_qr"
     
     # Buat parameter yang diperlukan untuk verifikasi
     params = {
@@ -84,13 +83,9 @@ def create_verification_qr(username, public_key_hex, institution=None, email=Non
         params["email"] = email
     
     # Buat URL dengan parameter
-    from urllib.parse import urlencode
     verification_url = f"{base_url}?{urlencode(params)}"
     
-    # Jika URL masih terlalu panjang, pertimbangkan untuk membuat ID pendek di database
-    # dan gunakan URL seperti http://yourdomain.com/v/ID_PENDEK
-    
-    # Buat QR code dengan batasan versi
+    # Buat QR code
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
@@ -104,11 +99,10 @@ def create_verification_qr(username, public_key_hex, institution=None, email=Non
     
     # Konversi QR code ke BytesIO
     img_io = io.BytesIO()
-    img.save(img_io)
+    img.save(img_io, format='PNG')
     img_io.seek(0)
     
     return img_io
-
 
 
 def find_signature_position(pdf_path, keyword="Tanda Tangan"):
@@ -763,6 +757,188 @@ def download_document(doc_id):
         
     return send_file(file_path, as_attachment=True)
 
+
+
+
+def add_barcode_to_pdf(input_pdf_path, barcode_image_path, output_pdf_path, x, y, page_num=0, width=100, height=40):
+    """
+    Add barcode to PDF with precise positioning
+    
+    Parameters:
+    - input_pdf_path: Path to the original PDF
+    - barcode_image_path: Path to the barcode/QR image
+    - output_pdf_path: Path where the output PDF will be saved
+    - x, y: Coordinates where to place the barcode (PDF coordinates)
+    - page_num: Page number where to add the barcode (0-indexed)
+    - width, height: Dimensions of the barcode image
+    """
+    reader = PdfReader(input_pdf_path)
+    writer = PdfWriter()
+    
+    for i in range(len(reader.pages)):
+        page = reader.pages[i]
+        
+        if i == page_num:
+            # Get actual page dimensions
+            mediabox = page.mediabox
+            page_width = float(mediabox.width)
+            page_height = float(mediabox.height)
+            
+            # Create overlay with barcode
+            packet = io.BytesIO()
+            # Use the actual page size instead of letter
+            can = canvas.Canvas(packet, pagesize=(page_width, page_height))
+            
+            # Draw the barcode at the exact coordinates - centered at x,y
+            # Adjust position to properly center the barcode
+            x_centered = x - width/2
+            y_centered = y - height/2
+            can.drawImage(barcode_image_path, x_centered, y_centered, width=width, height=height, mask='auto')
+            can.save()
+            
+            packet.seek(0)
+            overlay_pdf = PdfReader(packet)
+            page.merge_page(overlay_pdf.pages[0])
+        
+        writer.add_page(page)
+    
+    # Write the output file
+    with open(output_pdf_path, "wb") as output_file:
+        writer.write(output_file)
+    
+    return writer
+
+@app.route('/manual_sign', methods=['GET', 'POST'])
+@login_required
+def manual_sign():
+    if request.method == 'GET':
+        return render_template('manual_sign.html')
+    
+    username = session['username']
+    user = User.query.filter_by(username=username).first()
+    file = request.files['pdf']
+    password = request.form.get('password')
+    
+    # Get coordinates from the form
+    x = float(request.form.get('x', 10))
+    y = float(request.form.get('y', 10))
+    page_num = int(request.form.get('page', 0))  # Default to first page
+    
+    # Get actual dimensions for barcode (can be adjusted based on user preference)
+    barcode_width = float(request.form.get('width', 40))
+    barcode_height = float(request.form.get('height', 40))
+    
+    # Validasi dasar
+    if file.filename == '' or not password:
+        flash('File dan password diperlukan', 'error')
+        return redirect(url_for('manual_sign'))
+    
+    try:
+        decrypted_key_bytes = decrypt_private_key(user.private_key, password)
+        priv_key = Ed448PrivateKey.from_private_bytes(decrypted_key_bytes)
+    except Exception as e:
+        flash(f'Gagal mendekripsi private key: {str(e)}', 'error')
+        return redirect(url_for('manual_sign'))
+    
+    # Save the uploaded PDF
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(file_path)
+    
+    # Check if this is a preview request
+    is_preview = request.form.get('preview') == 'true'
+    
+    if is_preview:
+        # Create a temporary preview file
+        preview_filename = f"preview_{file.filename}"
+        preview_path = os.path.join(UPLOAD_FOLDER, preview_filename)
+        
+        # Create a preview PDF with a placeholder for the barcode
+        create_preview_pdf(
+            file_path,            # Input PDF
+            preview_path,         # Output path for preview
+            x, y,                 # Exact coordinates from click
+            page_num,             # Page number (0-indexed)
+            barcode_width,        # Width of barcode
+            barcode_height        # Height of barcode
+        )
+        
+        # Return the preview file
+        return send_file(preview_path, as_attachment=False)
+    
+    # Not a preview, proceed with actual signing
+    
+    # Generate document ID and signature time
+    doc_id = str(uuid.uuid4())
+    sign_time = datetime.utcnow().isoformat()
+    pub_key_hex = user.public_key.hex()
+    
+    # Create verification QR code
+    doc_qr_path = f"{UPLOAD_FOLDER}/{doc_id}_manual_verification.png"
+    img_io = create_verification_qr(
+        username, pub_key_hex, user.institution, user.email
+    )
+    with open(doc_qr_path, 'wb') as f:
+        f.write(img_io.getvalue())
+    
+    # Create temporary file for signed PDF
+    signed_filename = f"manual_signed_{file.filename}"
+    signed_path = os.path.join(UPLOAD_FOLDER, signed_filename)
+    
+    # Add barcode directly to PDF using the dedicated function
+    add_barcode_to_pdf(
+        file_path,             # Input PDF
+        doc_qr_path,           # Barcode image
+        signed_path,           # Output path
+        x, y,                  # Exact coordinates from click
+        page_num,              # Page number (0-indexed)
+        barcode_width,         # Width of barcode
+        barcode_height         # Height of barcode
+    )
+    
+    # Now open the output file and add metadata
+    reader = PdfReader(signed_path)
+    writer = PdfWriter()
+    
+    # Copy all pages
+    for page in reader.pages:
+        writer.add_page(page)
+    
+    # Create buffer for signing
+    temp_pdf = io.BytesIO()
+    writer.write(temp_pdf)
+    temp_pdf.seek(0)
+    pdf_data = temp_pdf.getvalue()
+    
+    # Generate signature
+    signature = priv_key.sign(pdf_data)
+    
+    # Add metadata to the PDF
+    writer.add_metadata({
+        '/SignedBy': username,
+        '/Signature': signature.hex(),
+        '/Institution': user.institution or "",
+        '/SignDate': sign_time,
+        '/DocumentID': doc_id,
+        '/PublicKey': pub_key_hex,
+        '/SignatureCoords': f"x={x},y={y},page={page_num}"
+    })
+    
+    # Write the final PDF with metadata
+    with open(signed_path, 'wb') as f:
+        writer.write(f)
+    
+    # Add record to database
+    db.session.add(SignedDocument(
+        id=doc_id,
+        filename=signed_filename,
+        signature=signature,
+        username=username,
+        timestamp=datetime.utcnow()
+    ))
+    db.session.commit()
+    
+    flash('Dokumen berhasil ditandatangani dengan klik.', 'success')
+    return send_file(signed_path, as_attachment=True)
 
 if __name__ == '__main__':
     with app.app_context():

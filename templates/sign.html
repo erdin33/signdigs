@@ -1,16 +1,18 @@
-{% extends "base.html" %} 
-{% block title %}Sign Document - DigiSign{% endblock %} 
-{% block content %} 
+{% extends "base.html" %}  
+
+{% block title %}Tanda Tangani Dokumen - DigiSign{% endblock %}  
+
+{% block content %}  
 <div class="flex flex-col">
-    <h1 class="text-3xl font-bold text-blue-700 mb-6">Sign Document</h1>
+    <h1 class="text-3xl font-bold text-blue-700 mb-6">Tanda Tangani Dokumen</h1>
     
     <div class="bg-white rounded-lg shadow-lg overflow-hidden">
         <div class="p-6">
-            <p class="text-gray-700 mb-6">Upload a PDF document to sign it with your digital signature. The signed document will include your verification QR code and cryptographic signature.</p>
+            <p class="text-gray-700 mb-6">Unggah dokumen PDF untuk menandatanganinya dengan tanda tangan digital Anda. Dokumen yang ditandatangani akan menyertakan kode QR verifikasi dan tanda tangan kriptografis Anda.</p>
             
             <form action="{{ url_for('sign_pdf') }}" method="post" enctype="multipart/form-data" class="space-y-6">
                 <div>
-                    <label for="pdf" class="block text-sm font-medium text-gray-700 mb-1">Select PDF Document</label>
+                    <label for="pdf" class="block text-sm font-medium text-gray-700 mb-1">Pilih Dokumen PDF</label>
                     <div class="flex items-center">
                         <input type="file" name="pdf" id="pdf" accept=".pdf" required
                                class="block w-full text-sm text-gray-500
@@ -28,21 +30,21 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <p class="text-sm text-blue-800">
-                            Your signature and QR code will be embedded in the first page of the document.
+                            Tanda tangan dan kode QR Anda akan disematkan pada halaman pertama dokumen.
                         </p>
                     </div>
                 </div>
                 
                 <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <input type="password" name="password" id="password" placeholder="Enter your password to sign" required
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Kata Sandi</label>
+                    <input type="password" name="password" id="password" placeholder="Masukkan kata sandi Anda untuk menandatangani" required
                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400
                                   focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                 </div>
                 
                 <div>
                     <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-                        Sign Document
+                        Tanda Tangani Dokumen
                     </button>
                 </div>
             </form>

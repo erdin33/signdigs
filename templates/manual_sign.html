@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+
+{% block title %}Tanda Tangani Dokumen - DigiSign{% endblock %}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tanda Tangani Dokumen - DigiSign</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2250c9;
+            --primary-hover: #1a3fa0;
+            --light-bg: #f5f9ff;
+            --border-color: #e0e0e0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1140px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .page-title {
+            font-size: 24px;
+            color: var(--primary-color);
+            margin-bottom: 25px;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        
+        .pdf-container {
+            position: relative;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #f5f5f5;
+            min-height: 500px;
+            margin: 20px 0;
+        }
+        
+        canvas {
+            cursor: crosshair;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .controls {
+            background-color: var(--light-bg);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .instructions {
+            background-color: #e9f7ef;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2ecc71;
+        }
+        
+        .status-bar {
+            background-color: var(--light-bg);
+            padding: 12px 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-weight: 500;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+        
+        .btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        input, select {
+            padding: 10px;
+            margin: 5px 0 15px;
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        label {
+            font-weight: 500;
+            display: block;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .options {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .options > div {
+            flex: 1;
+        }
+        
+        .loading-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+        }
+        
+        .button-group {
+            margin-top: 20px;
+        }
+        
+        .qr-indicator {
+            position: absolute;
+            border: 2px solid green;
+            background-color: rgba(0, 255, 0, 0.1);
+            z-index: 200;
+            pointer-events: none;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="page-title">Penandatanganan Dokumen PDF dengan Posisi Tepat</h2>
+        
+        <div class="card instructions">
+            <h3 style="margin-top: 0;">Petunjuk Penggunaan:</h3>
+            <ol>
+                <li>Pilih file PDF yang akan ditandatangani</li>
+                <li>Masukkan password untuk mendekripsi private key</li>
+                <li>Pilih ukuran QR code/barcode yang diinginkan</li>
+                <li>Klik pada PDF di tempat yang Anda inginkan untuk menempatkan tanda tangan</li>
+                <li>Perhatikan kotak merah yang menandakan posisi tanda tangan</li>
+                <li>Klik tombol "Tandatangani dan Unduh" untuk menghasilkan dan mengunduh PDF bertanda tangan</li>
+            </ol>
+        </div>
+        
+        <div class="card">
+            <form id="uploadForm" method="POST" enctype="multipart/form-data">
+                <div class="controls">
+                    <label for="pdf">Pilih PDF:</label>
+                    <input type="file" name="pdf" id="pdfFile" accept="application/pdf" required>
+                    
+                    <label for="password">Password (untuk mendekripsi private key):</label>
+                    <input type="password" name="password" required>
+                    
+                    <div class="options">
+                        <div>
+                            <label for="page">Halaman:</label>
+                            <select id="pageSelector" name="page">
+                                <option value="0">Halaman 1</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="barcodeSize">Ukuran Barcode:</label>
+                            <select id="barcodeSize" name="barcodeSize">
+                                <option value="small">Kecil (80x32)</option>
+                                <option value="medium" selected>Sedang (100x40)</option>
+                                <option value="large">Besar (120x48)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden fields for coordinates and dimensions -->
+                    <input type="hidden" name="x" id="xCoord">
+                    <input type="hidden" name="y" id="yCoord">
+                    <input type="hidden" name="width" id="signWidth" value="100">
+                    <input type="hidden" name="height" id="signHeight" value="40">
+                </div>
+                
+                <div class="status-bar" id="status">Pilih file PDF untuk memulai</div>
+                
+                <div class="pdf-container" id="pdfContainer">
+                    <canvas id="pdf-canvas"></canvas>
+                    <div id="signature-preview" class="signature-preview"></div>
+                    <div class="loading-indicator" id="loadingIndicator">
+                        <div>Loading PDF...</div>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button type="submit" id="submitBtn" class="btn" disabled>Tandatangani dan Unduh</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Explicitly set PDF.js worker path
+        pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+        
+        // Elements
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+        const signaturePreview = document.getElementById('signature-preview');
+        const statusText = document.getElementById('status');
+        const submitBtn = document.getElementById('submitBtn');
+        const pageSelector = document.getElementById('pageSelector');
+        const barcodeSize = document.getElementById('barcodeSize');
+        const pdfContainer = document.getElementById('pdfContainer');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        
+        // Variables
+        let pdfDoc = null;
+        let currentPage = 0;
+        let scale = 1.5;
+        let pdfOriginalWidth = 0;
+        let pdfOriginalHeight = 0;
+        let clickPositionSet = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        let pdfBlob = null;
+        
+        // Barcode sizes
+        const barcodeSizes = {
+            'small': { width: 40, height: 40 },
+            'medium': { width: 60, height: 60 },
+            'large': { width: 80, height: 80 }
+        };
+        
+        // Show loading indicator
+        function showLoading() {
+            loadingIndicator.style.display = 'block';
+        }
+        
+        // Hide loading indicator
+        function hideLoading() {
+            loadingIndicator.style.display = 'none';
+        }
+        
+        // Load PDF when file is selected
+        document.getElementById('pdfFile').addEventListener('change', function(e) {
+            let file = e.target.files[0];
+            if (!file) return;
+            
+            showLoading();
+            statusText.textContent = "Memuat PDF...";
+            clickPositionSet = false;
+            
+            let fileReader = new FileReader();
+            fileReader.onload = function() {
+                let typedarray = new Uint8Array(this.result);
+                
+                // Store the PDF blob for later use
+                pdfBlob = new Blob([typedarray], { type: 'application/pdf' });
+                
+                // Try to load the PDF with PDF.js
+                try {
+                    pdfjsLib.getDocument({data: typedarray}).promise
+                        .then(function(pdf) {
+                            console.log("PDF loaded successfully");
+                            pdfDoc = pdf;
+                            
+                            // Populate page selector
+                            pageSelector.innerHTML = '';
+                            for (let i = 1; i <= pdf.numPages; i++) {
+                                const option = document.createElement('option');
+                                option.value = i - 1; // 0-indexed for backend
+                                option.textContent = `Halaman ${i}`;
+                                pageSelector.appendChild(option);
+                            }
+                            
+                            currentPage = 0;
+                            statusText.textContent = `PDF dimuat. Klik pada dokumen untuk menentukan posisi tanda tangan.`;
+                            renderPage(currentPage);
+                        })
+                        .catch(function(error) {
+                            console.error("Error loading PDF:", error);
+                            statusText.textContent = `Error: Gagal memuat PDF: ${error.message}`;
+                            hideLoading();
+                        });
+                } catch (e) {
+                    console.error("Exception loading PDF:", e);
+                    statusText.textContent = `Error: Gagal memuat PDF: ${e.message}`;
+                    hideLoading();
+                }
+            };
+            fileReader.readAsArrayBuffer(file);
+        });
+        
+        // Handle page selection change
+        pageSelector.addEventListener('change', function() {
+            if (!pdfDoc) return;
+            currentPage = parseInt(this.value);
+            clickPositionSet = false;
+            renderPage(currentPage);
+        });
+        
+        // Handle barcode size selection
+        barcodeSize.addEventListener('change', function() {
+            const size = barcodeSizes[this.value];
+            document.getElementById('signWidth').value = size.width;
+            document.getElementById('signHeight').value = size.height;
+            
+            // Update preview if already positioned
+            if (clickPositionSet) {
+                updateSignaturePreview(
+                    parseFloat(document.getElementById('xCoord').value),
+                    parseFloat(document.getElementById('yCoord').value),
+                    size.width,
+                    size.height
+                );
+            }
+        });
+        
+        // Render PDF page with proper scaling
+        function renderPage(pageNum) {
+            showLoading();
+            
+            pdfDoc.getPage(pageNum + 1).then(function(page) {
+                console.log("Rendering page", pageNum + 1);
+                
+                // Get PDF original dimensions
+                const viewport = page.getViewport({scale: 1.0});
+                pdfOriginalWidth = viewport.width;
+                pdfOriginalHeight = viewport.height;
+                
+                // Calculate appropriate scale to fit the container
+                const containerWidth = pdfContainer.clientWidth - 20; // Padding
+                const containerHeight = window.innerHeight * 0.7; // Limit height to 70% of window
+                
+                const widthScale = containerWidth / viewport.width;
+                const heightScale = containerHeight / viewport.height;
+                scale = Math.min(widthScale, heightScale);
+                
+                // Apply scale
+                const scaledViewport = page.getViewport({scale: scale});
+                canvas.width = scaledViewport.width;
+                canvas.height = scaledViewport.height;
+                
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: scaledViewport
+                };
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                const renderTask = page.render(renderContext);
+                renderTask.promise.then(function() {
+                    console.log("Page rendered successfully");
+                    statusText.textContent = `PDF dimuat. Halaman ${pageNum + 1} dari ${pdfDoc.numPages}. Klik untuk menempatkan tanda tangan.`;
+                    submitBtn.disabled = true;
+                    hideLoading();
+                    
+                    // Reset signature preview if we changed pages
+                    if (!clickPositionSet) {
+                        signaturePreview.style.display = 'none';
+                    }
+                }).catch(function(error) {
+                    console.error("Error rendering page:", error);
+                    statusText.textContent = `Error: Gagal menampilkan halaman: ${error.message}`;
+                    hideLoading();
+                });
+            }).catch(function(error) {
+                console.error("Error getting page:", error);
+                statusText.textContent = `Error: Gagal mendapatkan halaman: ${error.message}`;
+                hideLoading();
+            });
+        }
+        
+        // Convert display coordinates to PDF coordinates
+        function displayToPdfCoordinates(displayX, displayY) {
+            // Convert from display coordinates to PDF coordinates
+            const pdfX = (displayX / scale);
+            const pdfY = pdfOriginalHeight - (displayY / scale); // Invert Y for PDF coordinates
+            return { x: pdfX, y: pdfY };
+        }
+        
+        // Convert PDF coordinates to display coordinates
+        function pdfToDisplayCoordinates(pdfX, pdfY) {
+            // Convert from PDF coordinates to display coordinates
+            const displayX = pdfX * scale;
+            const displayY = (pdfOriginalHeight - pdfY) * scale; // Invert Y back
+            return { x: displayX, y: displayY };
+        }
+        
+        // Update signature preview position (in edit mode)
+        function updateSignaturePreview(pdfX, pdfY, width, height) {
+            // Convert PDF coordinates back to display coordinates for preview
+            const displayCoords = pdfToDisplayCoordinates(pdfX, pdfY);
+            
+            // Scale dimensions according to the display scale
+            const displayWidth = width * scale;
+            const displayHeight = height * scale;
+            
+            // Position the preview box - center it on the click point
+            signaturePreview.style.display = 'block';
+            signaturePreview.style.left = (displayCoords.x - displayWidth/2) + 'px';
+            signaturePreview.style.top = (displayCoords.y - displayHeight/2) + 'px';
+            signaturePreview.style.width = displayWidth + 'px';
+            signaturePreview.style.height = displayHeight + 'px';
+        }
+        
+        // Handle mouse move on PDF for floating preview
+        canvas.addEventListener('mousemove', function(event) {
+            if (!pdfDoc) return;
+            
+            // Get mouse position relative to canvas
+            const rect = canvas.getBoundingClientRect();
+            mouseX = event.clientX - rect.left;
+            mouseY = event.clientY - rect.top;
+            
+            // Only update floating preview if position isn't set yet
+            if (!clickPositionSet) {
+                // Get current barcode size
+                const sizeKey = barcodeSize.value;
+                const size = barcodeSizes[sizeKey];
+                
+                // Scale dimensions according to the display scale
+                const displayWidth = size.width * scale;
+                const displayHeight = size.height * scale;
+                
+                // Show preview centered at cursor position
+                signaturePreview.style.display = 'block';
+                signaturePreview.style.left = (mouseX - displayWidth/2) + 'px';
+                signaturePreview.style.top = (mouseY - displayHeight/2) + 'px';
+                signaturePreview.style.width = displayWidth + 'px';
+                signaturePreview.style.height = displayHeight + 'px';
+            }
+        });
+        
+        // Hide preview when mouse leaves canvas
+        canvas.addEventListener('mouseleave', function() {
+            if (!clickPositionSet) {
+                signaturePreview.style.display = 'none';
+            }
+        });
+        
+        // Show preview when mouse enters canvas
+        canvas.addEventListener('mouseenter', function() {
+            if (!clickPositionSet && pdfDoc) {
+                signaturePreview.style.display = 'block';
+            }
+        });
+        
+        // Set signature position on click
+        canvas.addEventListener('click', function(event) {
+            if (!pdfDoc) return;
+            
+            // Get mouse position relative to canvas
+            const rect = canvas.getBoundingClientRect();
+            const displayX = event.clientX - rect.left;
+            const displayY = event.clientY - rect.top;
+            
+            // Convert to PDF coordinates
+            const pdfCoords = displayToPdfCoordinates(displayX, displayY);
+            
+            // Get current barcode size
+            const sizeKey = barcodeSize.value;
+            const size = barcodeSizes[sizeKey];
+            
+            // Set form values
+            document.getElementById('xCoord').value = pdfCoords.x;
+            document.getElementById('yCoord').value = pdfCoords.y;
+            document.getElementById('signWidth').value = size.width;
+            document.getElementById('signHeight').value = size.height;
+            
+            // Update preview with final position
+            updateSignaturePreview(pdfCoords.x, pdfCoords.y, size.width, size.height);
+            
+            clickPositionSet = true;
+            submitBtn.disabled = false;
+            
+            statusText.textContent = `Posisi tanda tangan ditetapkan pada koordinat PDF (x: ${Math.round(pdfCoords.x)}, y: ${Math.round(pdfCoords.y)}). Klik "Tandatangani dan Unduh" untuk menandatangani.`;
+        });
+        
+        // Prevent form submission if required fields aren't filled
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            const pdfFile = document.getElementById('pdfFile').value;
+            const password = document.querySelector('input[name="password"]').value;
+            const xCoord = document.getElementById('xCoord').value;
+            const yCoord = document.getElementById('yCoord').value;
+            
+            if (!pdfFile || !password || !xCoord || !yCoord) {
+                e.preventDefault();
+                alert('Silakan pilih file PDF, masukkan password, dan tentukan posisi tanda tangan.');
+            } else {
+                statusText.textContent = "Menandatangani dokumen...";
+                submitBtn.disabled = true;
+                submitBtn.textContent = "Memproses...";
+            }
+        });
+        
+        // Handle window resize to update the preview position if needed
+        window.addEventListener('resize', function() {
+            if (clickPositionSet && pdfDoc) {
+                // Re-render the current page to adjust for new window size
+                renderPage(currentPage);
+                
+                // Update the signature preview position
+                const pdfX = parseFloat(document.getElementById('xCoord').value);
+                const pdfY = parseFloat(document.getElementById('yCoord').value);
+                const width = parseFloat(document.getElementById('signWidth').value);
+                const height = parseFloat(document.getElementById('signHeight').value);
+                
+                updateSignaturePreview(pdfX, pdfY, width, height);
+            }
+        });
+        
+        // Initialize barcode size values
+        document.getElementById('signWidth').value = barcodeSizes['medium'].width;
+        document.getElementById('signHeight').value = barcodeSizes['medium'].height;
+        
+        // Hide loading indicators initially
+        hideLoading();
+    </script>
+</body>
+</html>
+{% endblock %}
