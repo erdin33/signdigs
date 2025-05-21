@@ -245,7 +245,7 @@
                             <!-- Binary overlay animation -->
                             <div class="absolute inset-0 text-xs text-blue-200 opacity-30 overflow-hidden font-mono">
                                 {% for i in range(20) %}
-                                <div class="whitespace-nowrap animate-marquee" style="animation-delay: {{ i * 0.2 }}s">
+                                <div class="whitespace-nowrap animate-marquee" :style="{ animationDelay: (i * 0.2) + 's' }">
                                     10101010101010101010101010101010101010101
                                 </div>
                                 {% endfor %}
