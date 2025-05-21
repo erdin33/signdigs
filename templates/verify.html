@@ -1,15 +1,15 @@
-{% extends "base.html" %} {% block title %}Verify Signature - DigiSign{% endblock %} {% block content %}
+{% extends "base.html" %} {% block title %}Verifikasi Tanda Tangan - DigiSign{% endblock %} {% block content %}
 
-<div class="flex flex-col"> <h1 class="text-3xl font-bold text-blue-700 mb-6">Verify Signature</h1> <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6"> <div class="p-6"> <p class="text-gray-700 mb-6">Enter a public key to verify a signer's authenticity. The system will check if the public key is associated with a registered user.</p>
+<div class="flex flex-col"> <h1 class="text-3xl font-bold text-blue-700 mb-6">Verifikasi Tanda Tangan</h1> <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6"> <div class="p-6"> <p class="text-gray-700 mb-6">Masukkan kunci publik untuk memverifikasi keaslian penandatangan. Sistem akan memeriksa apakah kunci publik tersebut terkait dengan pengguna terdaftar.</p>
     <form action="{{ url_for('verify_public_key') }}" method="post" class="space-y-6">
         <div>
-            <label for="public_key" class="block text-sm font-medium text-gray-700 mb-1">Enter Public Key</label>
+            <label for="public_key" class="block text-sm font-medium text-gray-700 mb-1">Masukkan Kunci Publik</label>
             <div class="flex items-center">
                 <input type="text" name="public_key" id="public_key" required
-                       placeholder="Enter the public key (hexadecimal format)"
+                       placeholder="Masukkan kunci publik (format heksadesimal)"
                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
             </div>
-            <p class="mt-1 text-xs text-gray-500">Enter the public key in hexadecimal format (usually found in the QR code)</p>
+            <p class="mt-1 text-xs text-gray-500">Masukkan kunci publik dalam format heksadesimal (biasanya ditemukan dalam kode QR)</p>
         </div>
         
         <div class="bg-blue-50 p-4 rounded-lg">
@@ -19,12 +19,12 @@
                 </svg>
                 <div>
                     <p class="text-sm text-blue-800 font-medium mb-1">
-                        How verification works:
+                        Cara kerja verifikasi:
                     </p>
                     <ul class="text-xs text-blue-700 list-disc pl-5 space-y-1">
-                        <li>DigiSign looks up the public key to verify the signer's identity</li>
-                        <li>Public keys are unique cryptographic identifiers for each user</li>
-                        <li>The verification confirms the key belongs to a registered user</li>
+                        <li>DigiSign mencari kunci publik untuk memverifikasi identitas penandatangan</li>
+                        <li>Kunci publik adalah pengidentifikasi kriptografi unik untuk setiap pengguna</li>
+                        <li>Verifikasi mengonfirmasi bahwa kunci tersebut milik pengguna terdaftar</li>
                     </ul>
                 </div>
             </div>
@@ -36,7 +36,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <p class="text-sm text-yellow-800">
-                    Public keys should be copied exactly as they appear in the QR code or verification information.
+                    Kunci publik harus disalin persis seperti yang terlihat pada kode QR atau informasi verifikasi.
                 </p>
             </div>
         </div>
@@ -46,27 +46,23 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Verify Signature
+                Verifikasi Tanda Tangan
             </button>
         </div>
     </form>
 </div>
-</div> <div class="bg-white rounded-lg shadow-lg overflow-hidden"> <div class="p-6"> <h2 class="text-xl font-semibold text-gray-800 mb-4">Verification FAQ</h2>
+</div> <div class="bg-white rounded-lg shadow-lg overflow-hidden"> <div class="p-6"> <h2 class="text-xl font-semibold text-gray-800 mb-4">FAQ Verifikasi</h2>
     <div class="space-y-4">
         <div>
-            <h3 class="font-medium text-gray-800">Where can I find the public key?</h3>
-            <p class="text-gray-600 text-sm">The public key can be found in the QR code on signed documents, or it may have been shared with you directly by the signer.</p>
+            <h3 class="font-medium text-gray-800">Di mana saya bisa menemukan kunci publik?</h3>
+            <p class="text-gray-600 text-sm">Kunci publik dapat ditemukan dalam kode QR pada dokumen yang ditandatangani, atau mungkin telah dibagikan langsung kepada Anda oleh penandatangan.</p>
         </div>
         
         <div>
-            <h3 class="font-medium text-gray-800">What information will verification provide?</h3>
-            <p class="text-gray-600 text-sm">Verification will confirm if the public key belongs to a registered DigiSign user and provide their identity information including username and institution.</p>
+            <h3 class="font-medium text-gray-800">Informasi apa yang akan diberikan verifikasi?</h3>
+            <p class="text-gray-600 text-sm">Verifikasi akan mengonfirmasi apakah kunci publik milik pengguna DigiSign terdaftar dan memberikan informasi identitas mereka termasuk nama pengguna dan institusi.</p>
         </div>
         
-        <div>
-            <h3 class="font-medium text-gray-800">Can I still verify signed PDF documents?</h3>
-            <p class="text-gray-600 text-sm">Yes, you can also <a href="{{ url_for('verify_pdf') }}" class="text-blue-600 hover:underline">verify signed PDF documents</a> by uploading them to our document verification system.</p>
-        </div>
     </div>
 </div>
 </div> </div> {% endblock %}

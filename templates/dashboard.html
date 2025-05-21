@@ -1,31 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Dashboard - DigiSign{% endblock %}
+{% block title %}Dasbor - DigiSign{% endblock %}
 {% block content %}
 <div class="flex flex-col">
-    <h1 class="text-3xl font-bold text-blue-700 mb-6">Dashboard</h1>
+    <h1 class="text-3xl font-bold text-blue-700 mb-6">Dasbor</h1>
     
     <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
         <div class="p-6">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-semibold text-gray-800">Welcome, {{ username }}!</h2>
+                <h2 class="text-xl font-semibold text-gray-800">Selamat Datang, {{ username }}!</h2>
                 <a href="{{ url_for('sign_pdf') }}" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                    Sign New Document
+                    Tandatangani Dokumen Baru
                 </a>
             </div>
             
             <div class="bg-blue-50 p-4 rounded-lg mb-6">
-                <h3 class="font-semibold text-blue-800 mb-2">Your Signature QR Code</h3>
+                <h3 class="font-semibold text-blue-800 mb-2">Kode QR Tanda Tangan Anda</h3>
                 <div class="flex items-center">
                     <div class="bg-white p-2 rounded border border-gray-200 mr-4">
-                        <img src="{{ url_for('download_qr') }}" alt="Your QR Code" class="h-32 w-32">
+                        <img src="{{ url_for('download_qr') }}" alt="Kode QR Anda" class="h-32 w-32">
                     </div>
                     <div>
-                        <p class="text-gray-700 mb-2">This QR code contains your public signing key. It's embedded in all documents you sign for easy verification.</p>
+                        <p class="text-gray-700 mb-2">Kode QR ini berisi kunci tanda tangan publik Anda. Kode ini tertanam pada semua dokumen yang Anda tandatangani untuk verifikasi yang mudah.</p>
                         <a href="{{ url_for('download_qr') }}" download class="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
-                            Download QR Code
+                            Unduh Kode QR
                         </a>
                     </div>
                 </div>
@@ -33,20 +33,20 @@
         </div>
     </div>
     
-    <!-- Signed Documents Section -->
+    <!-- Bagian Dokumen Tertandatangani -->
     <div class="bg-white rounded-lg shadow-lg overflow-hidden">
         <div class="p-6">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">Your Signed Documents</h2>
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Dokumen Tertandatangani Anda</h2>
             
             {% if user_docs %}
                 <div class="overflow-x-auto">
                     <table class="min-w-full bg-white">
                         <thead class="bg-gray-100">
                             <tr>
-                                <th class="py-3 px-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Document ID</th>
-                                <th class="py-3 px-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Filename</th>
-                                <th class="py-3 px-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Timestamp</th>
-                                <th class="py-3 px-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                                <th class="py-3 px-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">ID Dokumen</th>
+                                <th class="py-3 px-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Nama File</th>
+                                <th class="py-3 px-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Waktu</th>
+                                <th class="py-3 px-4 text-left text-sm font-medium text-gray-600 uppercase tracking-wider">Tindakan</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
@@ -56,7 +56,7 @@
                                 <td class="py-3 px-4 text-sm text-gray-900">{{ doc.filename }}</td>
                                 <td class="py-3 px-4 text-sm text-gray-900">{{ doc.timestamp }}</td>
                                 <td class="py-3 px-4 text-sm">
-                                    <a href="{{ url_for('download_document', doc_id=doc.id) }}" class="text-blue-600 hover:text-blue-800">Download</a>
+                                    <a href="{{ url_for('download_document', doc_id=doc.id) }}" class="text-blue-600 hover:text-blue-800">Unduh</a>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -69,13 +69,13 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <p class="text-lg mb-2">No signed documents yet</p>
-                    <p class="mb-4">You haven't signed any documents with DigiSign.</p>
+                    <p class="text-lg mb-2">Belum ada dokumen tertandatangani</p>
+                    <p class="mb-4">Anda belum menandatangani dokumen apapun dengan DigiSign.</p>
                     <a href="{{ url_for('sign_pdf') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
-                        Sign Your First Document
+                        Tandatangani Dokumen Pertama Anda
                     </a>
                 </div>
             {% endif %}
