@@ -15,6 +15,7 @@ import hashlib
 import fitz
 import smtplib
 import re
+import time
 from werkzeug.security import generate_password_hash, check_password_hash
 from email.message import EmailMessage
 from PyPDF2 import PdfReader, PdfWriter
@@ -37,7 +38,7 @@ app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'digisignkel11@gmail.com')
 # Gunakan app password untuk Gmail, bukan password akun Gmail biasa
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'bubi icam yjag ugfg')  # Ganti dengan App Password yang dihasilkan Google
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'bubi icam yjag ugfg')  # Password yang dihasilkan Google
 
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')  # path absolut ke folder uploads
@@ -64,27 +65,34 @@ def decrypt_private_key(encrypted_key: bytes, password: str) -> bytes:
 
 
 # Fungsi pembuatan QR code
-def create_verification_qr(username, public_key_hex, institution=None, email=None):
+def create_verification_qr(username, public_key_hex, institution=None, email=None, doc_id=None):
     """
-    Membuat QR code dengan URL verifikasi sederhana
+    Membuat QR code dengan URL verifikasi yang hanya menggunakan token
     """
     # Gunakan HTTP untuk pengembangan lokal
     base_url = "http://127.0.0.1:5000/verify_qr"
     
-    # Buat parameter yang diperlukan untuk verifikasi
-    params = {
-        "username": username,
-        "pubkey": public_key_hex[:40],  # Batasi panjang untuk QR code yang lebih kecil
-    }
+    # Buat token unik
+    unique_token = str(uuid.uuid4())[:12]  # Gunakan 12 karakter untuk keamanan lebih baik
     
-    if institution:
-        params["institution"] = institution
+    # Timestamp untuk pencatatan waktu
+    timestamp = int(time.time())
     
-    if email:
-        params["email"] = email
+    # Simpan informasi verifikasi di database menggunakan token sebagai kunci
+    verification = VerificationToken(
+        token=unique_token,
+        username=username,
+        public_key=public_key_hex[:40],
+        timestamp=timestamp,
+        institution=institution,
+        email=email,
+        doc_id=doc_id
+    )
+    db.session.add(verification)
+    db.session.commit()
     
-    # Buat URL dengan parameter
-    verification_url = f"{base_url}?{urlencode(params)}"
+    # Buat URL hanya dengan token
+    verification_url = f"{base_url}?token={unique_token}"
     
     # Buat QR code
     qr = qrcode.QRCode(
@@ -104,43 +112,6 @@ def create_verification_qr(username, public_key_hex, institution=None, email=Non
     img_io.seek(0)
     
     return img_io
-
-
-def find_signature_position(pdf_path, keyword="Tanda Tangan"):
-    """
-    Mencari posisi untuk menempatkan tanda tangan di kiri bawah halaman.
-    """
-    doc = fitz.open(pdf_path)
-    for page_num in range(len(doc) - 1, -1, -1):  # Mulai dari halaman terakhir
-        page = doc.load_page(page_num)
-        # Ambil dimensi halaman
-        page_rect = page.rect
-        page_width = page_rect.width
-        page_height = page_rect.height
-        
-        # Posisi di pojok kiri bawah dokumen (50px dari kiri, 50px dari bawah)
-        x = 10
-        y = 10  # Jarak dari bawah halaman yang kecil untuk menempatkan di bagian bawah
-        
-        # Jika menemukan kata kunci, gunakan halaman tersebut
-        text_instances = page.search_for(keyword)
-        if text_instances:
-            # Kembalikan koordinat X, Y (dari bawah), dan nomor halaman
-            return int(x), int(y), page_num
-            
-        # Jika ini halaman terakhir dan tidak ada kata kunci, gunakan halaman terakhir
-        if page_num == len(doc) - 1:
-            return int(x), int(y), page_num
-            
-    # Default ke halaman pertama jika dokumen kosong
-    if len(doc) > 0:
-        page = doc.load_page(0)
-        page_height = page.rect.height
-        x = 70
-        y = 70
-        return int(x), int(y), 0
-        
-    return None, None, None  # Tidak ditemukan
 
 
 def send_signature_email(recipient_email, username, doc_name, sign_time, file_path):
@@ -198,6 +169,26 @@ class SignedDocument(db.Model):
     signature = db.Column(db.LargeBinary, nullable=False)
     username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False)
+    
+class VerificationToken(db.Model):
+    __table_args__ = {'extend_existing': True}
+    
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(20), unique=True, nullable=False)
+    username = db.Column(db.String(100), nullable=False)
+    public_key = db.Column(db.String(100), nullable=False)
+    timestamp = db.Column(db.Integer, nullable=False)
+    institution = db.Column(db.String(100), nullable=True)
+    email = db.Column(db.String(100), nullable=True)
+    doc_id = db.Column(db.String(100), nullable=True)
+    is_used = db.Column(db.Boolean, default=False)
+    
+    def __repr__(self):
+        return f'<Token {self.token}>'
+    
+
+def __repr__(self):
+        return f'<Token {self.token}>'
 
 
 @app.context_processor
@@ -706,43 +697,52 @@ def download_qr():
     return send_file(barcode_path, mimetype='image/png')
 
 
-# Ubah nama endpoint untuk menghindari konflik
+
 @app.route('/verify_qr')
 def verify_qr_signature():
     """
-    Endpoint untuk verifikasi tanda tangan dari QR code
+    Endpoint untuk verifikasi tanda tangan dari QR code dengan token unik
     """
-    username = request.args.get('username')
-    pubkey = request.args.get('pubkey')
-    institution = request.args.get('institution')
-    email = request.args.get('email')
+    token = request.args.get('token')
     
-    if not username or not pubkey:
-        flash('Data verifikasi tidak lengkap', 'error')
+    if not token:
+        flash('Token verifikasi tidak ditemukan', 'error')
         return redirect(url_for('verify_pdf'))
     
-    # Cari user dengan username tersebut
-    user = User.query.filter_by(username=username).first()
+    # Cari data verifikasi berdasarkan token
+    verification = VerificationToken.query.filter_by(token=token).first()
+    
+    if not verification:
+        return render_template('verify_result.html',
+                             result="Token verifikasi tidak valid.",
+                             valid=False)
+    
+    # Cari user dengan username dari data verifikasi
+    user = User.query.filter_by(username=verification.username).first()
     
     if not user:
-        return render_template('verify_result.html', 
-                              result="Pengguna tidak ditemukan dalam sistem.", 
-                              valid=False)
+        return render_template('verify_result.html',
+                             result="Pengguna tidak ditemukan dalam sistem.",
+                             valid=False)
     
-    # Bandingkan public key dari database dengan yang ada di QR code
+    # Bandingkan public key dari database dengan yang ada di data verifikasi
     actual_pubkey = user.public_key.hex()
-    if not actual_pubkey.startswith(pubkey):
-        return render_template('verify_result.html', 
-                              result="Public key tidak sesuai dengan pengguna.", 
-                              valid=False)
+    if not actual_pubkey.startswith(verification.public_key):
+        return render_template('verify_result.html',
+                             result="Public key tidak sesuai dengan pengguna.",
+                             valid=False)
+    
+    # Konversi timestamp ke format yang lebih mudah dibaca
+    from datetime import datetime
+    verify_date = datetime.fromtimestamp(verification.timestamp).strftime("%d-%m-%Y %H:%M:%S")
     
     # Jika verifikasi berhasil
-    return render_template('verify_result.html', 
-                          result=f"Tanda tangan valid. Ditandatangani oleh: {username} dari {user.institution if user.institution else 'Tidak ada institusi'}",
-                          valid=True,
-                          signer=username,
-                          institution=user.institution if user.institution else "Tidak ada institusi",
-                          sign_date="Validasi melalui QR code")
+    return render_template('verify_result.html',
+                         result=f"Tanda tangan valid. Ditandatangani oleh: {verification.username} dari {verification.institution if verification.institution else 'Tidak ada institusi'}",
+                         valid=True,
+                         signer=verification.username,
+                         institution=verification.institution if verification.institution else "Tidak ada institusi",
+                         sign_date=verify_date)
 
 
 @app.route('/download_document/<doc_id>')
