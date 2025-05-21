@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}DigiSign - Secure Digital Signature System{% endblock %}
+{% block title %}DigiSign - Sistem Tanda Tangan Digital Aman{% endblock %}
 
 {% block content %}
 <div class="flex flex-col items-center justify-center">
     <div class="text-center max-w-3xl">
-        <h1 class="text-4xl font-bold text-blue-700 mb-4">Welcome to DigiSign</h1>
-        <p class="text-xl text-gray-700 mb-8">A secure digital signature system for your important documents</p>
+        <h1 class="text-4xl font-bold text-blue-700 mb-4">Selamat Datang di DigiSign</h1>
+        <p class="text-xl text-gray-700 mb-8">Sistem tanda tangan digital yang aman untuk dokumen penting Anda</p>
         
         <div class="bg-white p-8 rounded-lg shadow-lg">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -14,10 +14,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                     </svg>
-                    <h2 class="text-xl font-bold mb-2">Register</h2>
-                    <p class="text-gray-600 text-center">Create an account to start signing documents</p>
+                    <h2 class="text-xl font-bold mb-2">Daftar</h2>
+                    <p class="text-gray-600 text-center">Buat akun untuk mulai menandatangani dokumen</p>
                     {% if not session.username %}
-                    <a href="{{ url_for('register') }}" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Register Now</a>
+                    <a href="{{ url_for('register') }}" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Daftar Sekarang</a>
                     {% endif %}
                 </div>
                 
@@ -25,12 +25,12 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
-                    <h2 class="text-xl font-bold mb-2">Sign</h2>
-                    <p class="text-gray-600 text-center">Digitally sign your PDF documents with advanced cryptography</p>
+                    <h2 class="text-xl font-bold mb-2">Tanda Tangani</h2>
+                    <p class="text-gray-600 text-center">Tanda tangani dokumen PDF Anda secara digital dengan kriptografi canggih</p>
                     {% if session.username %}
-                    <a href="{{ url_for('sign_pdf') }}" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Sign Document</a>
+                    <a href="{{ url_for('manual_sign') }}" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Tanda Tangani Dokumen</a>
                     {% else %}
-                    <a href="{{ url_for('login') }}" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Login to Sign</a>
+                    <a href="{{ url_for('login') }}" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Login untuk Tanda Tangan</a>
                     {% endif %}
                 </div>
                 
@@ -38,38 +38,38 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
-                    <h2 class="text-xl font-bold mb-2">Verify</h2>
-                    <p class="text-gray-600 text-center">Verify the authenticity of signed documents</p>
-                    <a href="{{ url_for('verify_pdf') }}" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Verify Document</a>
+                    <h2 class="text-xl font-bold mb-2">Verifikasi</h2>
+                    <p class="text-gray-600 text-center">Verifikasi keaslian dokumen yang telah ditandatangani</p>
+                    <a href="{{ url_for('verify_pdf') }}" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Verifikasi Dokumen</a>
                 </div>
             </div>
         </div>
         
         <div class="mt-12 bg-white p-8 rounded-lg shadow-lg">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">How It Works</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Cara Kerjanya</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="flex flex-col items-center">
                     <div class="bg-blue-100 rounded-full h-16 w-16 flex items-center justify-center mb-4">
                         <span class="text-blue-600 text-2xl font-bold">1</span>
                     </div>
-                    <h3 class="font-bold mb-2">Create an Account</h3>
-                    <p class="text-gray-600 text-center">Register to get your unique digital signing key</p>
+                    <h3 class="font-bold mb-2">Buat Akun</h3>
+                    <p class="text-gray-600 text-center">Daftar untuk mendapatkan kunci tanda tangan digital unik Anda</p>
                 </div>
                 
                 <div class="flex flex-col items-center">
                     <div class="bg-blue-100 rounded-full h-16 w-16 flex items-center justify-center mb-4">
                         <span class="text-blue-600 text-2xl font-bold">2</span>
                     </div>
-                    <h3 class="font-bold mb-2">Upload & Sign</h3>
-                    <p class="text-gray-600 text-center">Upload your PDF and sign it with your secure key</p>
+                    <h3 class="font-bold mb-2">Unggah & Tanda Tangani</h3>
+                    <p class="text-gray-600 text-center">Unggah PDF Anda dan tanda tangani dengan kunci aman Anda</p>
                 </div>
                 
                 <div class="flex flex-col items-center">
                     <div class="bg-blue-100 rounded-full h-16 w-16 flex items-center justify-center mb-4">
                         <span class="text-blue-600 text-2xl font-bold">3</span>
                     </div>
-                    <h3 class="font-bold mb-2">Share & Verify</h3>
-                    <p class="text-gray-600 text-center">Share your signed document for easy verification</p>
+                    <h3 class="font-bold mb-2">Bagikan & Verifikasi</h3>
+                    <p class="text-gray-600 text-center">Bagikan dokumen yang telah ditandatangani untuk verifikasi mudah</p>
                 </div>
             </div>
         </div>

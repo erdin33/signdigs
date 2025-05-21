@@ -37,7 +37,7 @@ app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'digisignkel11@gmail.com')
 # Gunakan app password untuk Gmail, bukan password akun Gmail biasa
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'ivzj wsus vjbe davy')  # Ganti dengan App Password yang dihasilkan Google
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'bubi icam yjag ugfg')  # Ganti dengan App Password yang dihasilkan Google
 
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')  # path absolut ke folder uploads
