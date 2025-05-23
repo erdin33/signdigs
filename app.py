@@ -70,7 +70,7 @@ def create_verification_qr(username, public_key_hex, institution=None, email=Non
     Membuat QR code dengan URL verifikasi yang hanya menggunakan token
     """
     # Gunakan HTTP untuk pengembangan lokal
-    base_url = "http://127.0.0.1:5000/verify_qr"
+    base_url = "https://18l41cx3-5000.asse.devtunnels.ms/verify_qr"
     
     # Buat token unik
     unique_token = str(uuid.uuid4())[:12]  # Gunakan 12 karakter untuk keamanan lebih baik
@@ -544,60 +544,6 @@ def verify_pdf():
             result = "Invalid signature."
             return render_template('verify_result.html', result=result, valid=False)
 
-@app.route('/verify_key', methods=['GET'])
-def verify_key():
-    """Route for the public key verification page"""
-    return render_template('verify_key.html')
-
-@app.route('/verify_public_key', methods=['POST'])
-def verify_public_key():
-    """Handle verification of public keys directly entered by users"""
-    public_key_hex = request.form.get('public_key')
-    
-    if not public_key_hex:
-        flash('No public key provided', 'error')
-        return redirect(url_for('verify_key'))
-    
-    try:
-        # Clean the input in case users add spaces or other characters
-        public_key_hex = public_key_hex.strip()
-        
-        # Check if this is a complete key or a prefix (from QR code)
-        # If it's a prefix, find users whose public key starts with this value
-        users = []
-        
-        if len(public_key_hex) >= 40:  # Assuming 40 chars is minimum useful length
-            # Try to find exact match first
-            for user in User.query.all():
-                user_key_hex = user.public_key.hex()
-                
-                # Check for exact match or prefix match
-                if user_key_hex == public_key_hex or user_key_hex.startswith(public_key_hex):
-                    users.append(user)
-        
-        if not users:
-            result = "No matching public key found in the system."
-            return render_template('verify_result.html', result=result, valid=False)
-        
-        # If we found exactly one user
-        if len(users) == 1:
-            user = users[0]
-            result = f"Tanda tangan valid. Ditandatangani : {user.username} dari {user.institution}"
-            return render_template('verify_result.html', 
-                                result=result, 
-                                valid=True, 
-                                signer=user.username, 
-                                institution=user.institution if user.institution else "Not specified",
-                                sign_date="Key verification only")
-        else:
-            # Multiple matches found (unlikely but possible with short prefixes)
-            result = f"Multiple users found with matching public key. Please provide more characters."
-            return render_template('verify_result.html', result=result, valid=False)
-            
-    except Exception as e:
-        result = f"Error verifying public key: {str(e)}"
-        return render_template('verify_result.html', result=result, valid=False)
-    
     
     
 @app.route('/edit_profile', methods=['GET', 'POST'])

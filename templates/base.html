@@ -33,9 +33,6 @@
                         <a href="{{ url_for('manual_sign') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
                             <i class="fas fa-signature mr-1.5"></i> Sign Document
                         </a>
-                        <a href="{{ url_for('verify_pdf') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
-                            <i class="fas fa-check-circle mr-1.5"></i> Verify Document
-                        </a>
                         <a href="{{ url_for('about') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
                             <i class="fas fa-info-circle mr-1.5"></i> About
                         </a>
@@ -44,9 +41,6 @@
                             <i class="fas fa-sign-out-alt mr-1.5"></i> Logout
                         </a>
                     {% else %}
-                        <a href="{{ url_for('verify_pdf') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
-                            <i class="fas fa-check-circle mr-1.5"></i> Verify Document
-                        </a>
                         <a href="{{ url_for('about') }}" class="px-3 py-2 rounded-md hover:bg-blue-600 hover:text-white transition duration-200 flex items-center">
                             <i class="fas fa-info-circle mr-1.5"></i> About
                         </a>
