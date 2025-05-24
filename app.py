@@ -36,9 +36,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'digisignkel11@gmail.com')
-# Gunakan app password untuk Gmail, bukan password akun Gmail biasa
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'bubi icam yjag ugfg')  # Password yang dihasilkan Google
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'digitalsignaturekel11@gmail.com')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'lddn swti ylch jobo')
 
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')  # path absolut ke folder uploads
@@ -706,7 +705,6 @@ def download_document(doc_id):
 
 
 
-
 def add_barcode_to_pdf(input_pdf_path, barcode_image_path, output_pdf_path, x, y, page_num=0, width=100, height=40):
     """
     Add barcode to PDF with precise positioning
@@ -884,9 +882,36 @@ def manual_sign():
     ))
     db.session.commit()
     
-    flash('Dokumen berhasil ditandatangani dengan klik.', 'success')
+    # Handle email notification BEFORE returning the file
+    email_message = 'Dokumen berhasil ditandatangani'
+    
+    if user.email:
+        try:
+            email_sent = send_signature_email(
+                recipient_email=user.email,
+                username=username,
+                doc_name=signed_filename,
+                sign_time=sign_time,
+                file_path=signed_path
+            )
+            
+            if email_sent:
+                email_message += ' dan telah dikirim ke email Anda!'
+            else:
+                email_message += ', tetapi gagal mengirim ke email.'
+                
+        except Exception as e:
+            print(f"Error sending email: {str(e)}")  # Log the error
+            email_message += ', tetapi gagal mengirim ke email.'
+    else:
+        email_message += '! (Email notifikasi tidak dikirim karena alamat email tidak tersedia)'
+    
+    flash(email_message, 'success')
+    
+    # Return the signed file
     return send_file(signed_path, as_attachment=True)
-
+    
+    
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
